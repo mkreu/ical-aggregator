@@ -1,0 +1,11 @@
+# iCal Aggregator Configuration
+# Add your iCal feed URLs below
+
+# Server port (default: 3000)
+port = 3000
+
+# List of iCal feed URLs to merge
+feeds = [
+    "https://example.org/events.ics",
+    "https://example.com/events.ics"
+]
