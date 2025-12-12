@@ -7,17 +7,32 @@ use axum::{
 use icalendar::{Calendar, Component, Event, EventLike};
 use serde::Deserialize;
 use std::fs;
+use std::sync::Arc;
+use std::time::Duration;
 use tracing::info;
+use arc_swap::ArcSwap;
 
 #[derive(Debug, Deserialize)]
 struct Config {
     feeds: Vec<String>,
     #[serde(default = "default_port")]
     port: u16,
+    #[serde(default = "default_refresh_interval")]
+    refresh_interval_seconds: u64,
 }
 
 fn default_port() -> u16 {
     3000
+}
+
+fn default_refresh_interval() -> u64 {
+    300 // 5 minutes
+}
+
+// Shared state for cached calendar
+#[derive(Clone)]
+struct AppState {
+    cached_calendar: Arc<ArcSwap<String>>,
 }
 
 #[tokio::main]
@@ -32,11 +47,25 @@ async fn main() {
         .expect("Failed to parse config.toml");
 
     info!("Loaded {} feed URLs from config", config.feeds.len());
+    info!("Refresh interval: {} seconds", config.refresh_interval_seconds);
+
+    // Create shared state for cached calendar
+    let cached_calendar = Arc::new(ArcSwap::from_pointee(String::new()));
+    let state = AppState {
+        cached_calendar: cached_calendar.clone(),
+    };
+
+    // Spawn background task to refresh calendar periodically
+    let feed_urls = config.feeds.clone();
+    let refresh_interval = config.refresh_interval_seconds;
+    tokio::spawn(async move {
+        refresh_calendar_loop(feed_urls, cached_calendar, refresh_interval).await;
+    });
 
     // Build the router
     let app = Router::new()
-        .route("/calendar.ics", get(serve_merged_calendar))
-        .with_state(config.feeds);
+        .route("/calendar.ics", get(serve_cached_calendar))
+        .with_state(state);
 
     // Start the server
     let addr = format!("0.0.0.0:{}", config.port);
@@ -51,17 +80,52 @@ async fn main() {
         .expect("Server failed");
 }
 
-async fn serve_merged_calendar(
-    axum::extract::State(feed_urls): axum::extract::State<Vec<String>>,
-) -> Result<impl IntoResponse, AppError> {
-    info!("Fetching and merging {} calendars", feed_urls.len());
+async fn refresh_calendar_loop(
+    feed_urls: Vec<String>,
+    cached_calendar: Arc<ArcSwap<String>>,
+    refresh_interval_seconds: u64,
+) {
+    loop {
+        info!("Refreshing calendar cache...");
+        
+        match fetch_and_merge_calendars(&feed_urls).await {
+            Ok(merged_ical) => {
+                cached_calendar.store(Arc::new(merged_ical));
+                info!("Calendar cache updated successfully");
+            }
+            Err(e) => {
+                tracing::error!("Failed to refresh calendar: {}", e);
+            }
+        }
+        
+        tokio::time::sleep(Duration::from_secs(refresh_interval_seconds)).await;
+    }
+}
 
+async fn serve_cached_calendar(
+    axum::extract::State(state): axum::extract::State<AppState>,
+) -> Result<impl IntoResponse, AppError> {
+    let calendar = state.cached_calendar.load();
+    
+    if calendar.is_empty() {
+        return Err(AppError(Box::from("Calendar not yet loaded")));
+    }
+    
+    Ok((
+        StatusCode::OK,
+        [("Content-Type", "text/calendar; charset=utf-8")],
+        calendar.to_string(),
+    ))
+}
+
+async fn fetch_and_merge_calendars(feed_urls: &[String]) -> Result<String, Box<dyn std::error::Error>> {
     // Fetch all calendars concurrently
     let client = reqwest::Client::new();
     let mut fetch_tasks = Vec::new();
 
     for url in feed_urls {
         let client = client.clone();
+        let url = url.clone();
         let task = tokio::spawn(async move {
             let response = client.get(&url).send().await?;
             let text = response.text().await?;
@@ -96,13 +160,7 @@ async fn serve_merged_calendar(
     }
 
     // Return the merged calendar as iCal format
-    let ical_string = merged_calendar.to_string();
-    
-    Ok((
-        StatusCode::OK,
-        [("Content-Type", "text/calendar; charset=utf-8")],
-        ical_string,
-    ))
+    Ok(merged_calendar.to_string())
 }
 
 fn merge_calendar_events(ical_text: &str, merged: &mut Calendar) -> Result<(), Box<dyn std::error::Error>> {
