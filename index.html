@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Swing City Calendar</title>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, sans-serif;
+    }
+
+    #calendar {
+      max-width: 1100px;
+      margin: 40px auto;
+      padding: 0 10px;
+    }
+
+    .calendar-legend {
+      max-width: 1100px;
+      margin: 10px auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      font-size: 0.9rem;
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid #ccc;
+    }
+
+    .fc-event {
+      border-radius: 4px;
+      border: 1px solid #999;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="calendar-legend">
+    <div class="legend-item">
+      <span class="legend-color" style="background:#2c7be5;"></span>
+      <span>Our club</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-color" style="background:#f6b73c;"></span>
+      <span>Guest organizer X</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-color" style="background:#28a745;"></span>
+      <span>Guest organizer Y</span>
+    </div>
+  </div>
+
+  <div id="calendar"></div>
+
+  <!-- 1) FullCalendar standard bundle (includes dayGrid/timeGrid/list, injects its own CSS) -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.19/index.global.min.js"></script>
+
+  <!-- 2) ical.js (required by @fullcalendar/icalendar) -->
+  <!-- You can self-host this file; this is just one possible source -->
+  <script src="https://github.com/mozilla-comm/ical.js/releases/download/v1.4.0/ical.js"></script>
+
+  <!-- 3) FullCalendar iCalendar plugin (global build) -->
+  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/icalendar@6.1.19/index.global.min.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const calendarEl = document.getElementById('calendar');
+
+      // Map of category -> color (must match your ICS CATEGORIES values)
+      const categoryColors = {
+        'our-club': '#2c7be5',
+        'other-organizer': '#f6b73c'
+      };
+
+      // Try to pick up the icalendar plugin if it is registered globally
+      const plugins = [];
+      if (FullCalendar && FullCalendar.icalendarPlugin) {
+        plugins.push(FullCalendar.icalendarPlugin);
+      } else {
+        console.warn('FullCalendar iCalendar plugin not found – ICS loading may not work.');
+      }
+
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        height: 'auto',
+
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,listWeek'
+        },
+
+        // register plugins if present (calendar will still work without them, just without ICS)
+        plugins,
+
+        eventSources: [
+          {
+            url: '/calendar.ics',
+            format: 'ics'
+          }
+        ],
+
+        eventContent: function (arg) {
+          const timeText = arg.timeText ? arg.timeText + ' ' : '';
+          return { html: `<span>${timeText}${arg.event.title}</span>` };
+        },
+
+        eventDidMount: function (info) {
+            console.log('Event mounted:', info.event);
+          const ext = info.event.extendedProps || {};
+          let categories = ext.categories || [];
+          console.log('Extended properties:', ext);
+
+          // icalendar plugin often puts CATEGORIES into extendedProps.categories
+          if (typeof categories === 'string') {
+            categories = [categories];
+          }
+
+          let chosenColor = null;
+          for (const cat of categories) {
+            console.log('Event category:', cat);
+            if (categoryColors[cat]) {
+              chosenColor = categoryColors[cat];
+              break;
+            }
+          }
+
+          if (chosenColor) {
+            const el = info.el;
+            el.style.backgroundColor = chosenColor;
+            el.style.borderColor = chosenColor;
+            el.style.color = '#fff';
+          }
+        }
+      });
+
+      calendar.render();
+    });
+  </script>
+</body>
+</html>

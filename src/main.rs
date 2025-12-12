@@ -1,6 +1,6 @@
 use axum::{
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{IntoResponse, Response, Html},
     routing::get,
     Router,
 };
@@ -12,9 +12,15 @@ use std::time::Duration;
 use tracing::info;
 use arc_swap::ArcSwap;
 
+#[derive(Debug, Deserialize, Clone)]
+struct CalendarFeed {
+    id: String,
+    url: String,
+}
+
 #[derive(Debug, Deserialize)]
 struct Config {
-    feeds: Vec<String>,
+    feeds: Vec<CalendarFeed>,
     #[serde(default = "default_port")]
     port: u16,
     #[serde(default = "default_refresh_interval")]
@@ -56,14 +62,15 @@ async fn main() {
     };
 
     // Spawn background task to refresh calendar periodically
-    let feed_urls = config.feeds.clone();
+    let feeds = config.feeds.clone();
     let refresh_interval = config.refresh_interval_seconds;
     tokio::spawn(async move {
-        refresh_calendar_loop(feed_urls, cached_calendar, refresh_interval).await;
+        refresh_calendar_loop(feeds, cached_calendar, refresh_interval).await;
     });
 
     // Build the router
     let app = Router::new()
+        .route("/", get(serve_index))
         .route("/calendar.ics", get(serve_cached_calendar))
         .with_state(state);
 
@@ -81,14 +88,14 @@ async fn main() {
 }
 
 async fn refresh_calendar_loop(
-    feed_urls: Vec<String>,
+    feeds: Vec<CalendarFeed>,
     cached_calendar: Arc<ArcSwap<String>>,
     refresh_interval_seconds: u64,
 ) {
     loop {
         info!("Refreshing calendar cache...");
         
-        match fetch_and_merge_calendars(&feed_urls).await {
+        match fetch_and_merge_calendars(&feeds).await {
             Ok(merged_ical) => {
                 cached_calendar.store(Arc::new(merged_ical));
                 info!("Calendar cache updated successfully");
@@ -118,18 +125,25 @@ async fn serve_cached_calendar(
     ))
 }
 
-async fn fetch_and_merge_calendars(feed_urls: &[String]) -> Result<String, Box<dyn std::error::Error>> {
+async fn serve_index() -> Html<String> {
+    match fs::read_to_string("index.html") {
+        Ok(content) => Html(content),
+        Err(_) => Html("<html><body><h1>Error loading index.html</h1></body></html>".to_string()),
+    }
+}
+
+async fn fetch_and_merge_calendars(feeds: &[CalendarFeed]) -> Result<String, Box<dyn std::error::Error>> {
     // Fetch all calendars concurrently
     let client = reqwest::Client::new();
     let mut fetch_tasks = Vec::new();
 
-    for url in feed_urls {
+    for feed in feeds {
         let client = client.clone();
-        let url = url.clone();
+        let feed = feed.clone();
         let task = tokio::spawn(async move {
-            let response = client.get(&url).send().await?;
+            let response = client.get(&feed.url).send().await?;
             let text = response.text().await?;
-            Ok::<String, reqwest::Error>(text)
+            Ok::<(String, String), reqwest::Error>((text, feed.id))
         });
         fetch_tasks.push(task);
     }
@@ -145,9 +159,9 @@ async fn fetch_and_merge_calendars(feed_urls: &[String]) -> Result<String, Box<d
     // Parse and merge all calendars
     for result in results {
         match result {
-            Ok(Ok(ical_text)) => {
-                if let Err(e) = merge_calendar_events(&ical_text, &mut merged_calendar) {
-                    tracing::warn!("Failed to parse calendar: {}", e);
+            Ok(Ok((ical_text, calendar_id))) => {
+                if let Err(e) = merge_calendar_events(&ical_text, &mut merged_calendar, &calendar_id) {
+                    tracing::warn!("Failed to parse calendar '{}': {}", calendar_id, e);
                 }
             }
             Ok(Err(e)) => {
@@ -163,7 +177,7 @@ async fn fetch_and_merge_calendars(feed_urls: &[String]) -> Result<String, Box<d
     Ok(merged_calendar.to_string())
 }
 
-fn merge_calendar_events(ical_text: &str, merged: &mut Calendar) -> Result<(), Box<dyn std::error::Error>> {
+fn merge_calendar_events(ical_text: &str, merged: &mut Calendar, calendar_id: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Parse the iCal text using the parser
     let unfolded = icalendar::parser::unfold(ical_text);
     let parsed = icalendar::parser::read_calendar(&unfolded)?;
@@ -173,6 +187,7 @@ fn merge_calendar_events(ical_text: &str, merged: &mut Calendar) -> Result<(), B
         if component.name == "VEVENT" {
             // Create a new event from the parsed component
             let mut event = Event::new();
+            let mut has_categories = false;
             
             for property in component.properties {
                 match property.name.as_ref() {
@@ -180,6 +195,12 @@ fn merge_calendar_events(ical_text: &str, merged: &mut Calendar) -> Result<(), B
                     "SUMMARY" => { event.summary(property.val.as_ref()); }
                     "DESCRIPTION" => { event.description(property.val.as_ref()); }
                     "LOCATION" => { event.location(property.val.as_ref()); }
+                    "CATEGORIES" => {
+                        // If event already has categories, append our calendar ID
+                        let combined = format!("{},{}", property.val.as_ref(), calendar_id);
+                        event.add_property("CATEGORIES", &combined);
+                        has_categories = true;
+                    }
                     "DTSTART" => { 
                         event.add_property("DTSTART", property.val.as_ref());
                     }
@@ -193,6 +214,11 @@ fn merge_calendar_events(ical_text: &str, merged: &mut Calendar) -> Result<(), B
                         event.add_property(property.name.as_ref(), property.val.as_ref());
                     }
                 }
+            }
+            
+            // Add calendar ID as category if not already present
+            if !has_categories {
+                event.add_property("CATEGORIES", calendar_id);
             }
             
             merged.push(event);
