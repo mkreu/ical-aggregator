@@ -5,8 +5,8 @@ import interactionPlugin from '@fullcalendar/interaction'
 import listPlugin from '@fullcalendar/list'
 import multiMonthPlugin from '@fullcalendar/multimonth'
 import timeGridPlugin from '@fullcalendar/timegrid'
-import { EventCalendarViews } from '@/components/ui/event-calendar-views'
 import { EventCalendarToolbar } from '@/components/event-calendar-toolbar'
+import { EventCalendarViews } from '@/components/ui/event-calendar-views'
 import { EventCalendarCloseIcon } from '@/components/event-calendar-icons'
 import { EventCalendarContainer } from '@/components/ui/event-calendar-container'
 
@@ -40,10 +40,10 @@ export interface EventCalendarProps extends Omit<CalendarOptions, 'class'> {
 export function EventCalendar({
   availableViews = defaultAvailableViews,
   addButton,
+  direction,
   className,
   height,
   contentHeight,
-  direction,
   plugins: userPlugins = [],
   ...restOptions
 }: EventCalendarProps) {
@@ -51,20 +51,27 @@ export function EventCalendar({
   const autoHeight = height === 'auto' || contentHeight === 'auto'
 
   return (
-    <EventCalendarContainer direction={direction} className={className} height={height}>
+    <EventCalendarContainer
+      direction={direction}
+      className={className}
+      height={height}
+      borderless={restOptions.borderless}
+      borderlessX={restOptions.borderlessX}
+      borderlessTop={restOptions.borderlessTop}
+      borderlessBottom={restOptions.borderlessBottom}
+    >
       <EventCalendarToolbar
         controller={controller}
         availableViews={availableViews}
         addButton={addButton}
-        borderlessX={restOptions.borderlessX ?? restOptions.borderless}
       />
       <EventCalendarViews
+        controller={controller}
         liquidHeight={!autoHeight && height !== undefined}
         height={autoHeight ? 'auto' : contentHeight}
         initialView={availableViews[0]}
         navLinkDayClick={navLinkDayClick}
         navLinkWeekClick={navLinkWeekClick}
-        controller={controller}
         plugins={[...plugins, ...userPlugins]}
         popoverCloseContent={() => (
           <EventCalendarCloseIcon />

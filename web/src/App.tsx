@@ -1,9 +1,9 @@
-import { EventCalendarDemo } from '@/components/event-calendar-demo'
+import { CalendarApp } from './components/Calendar';
 
 export function App() {
-return <div className='px-5'>
-  <EventCalendarDemo />
-</div>;
+    return <div className='px-5'>
+        <CalendarApp />
+    </div>;
 }
 
 export default App;

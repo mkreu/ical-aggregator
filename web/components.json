@@ -21,6 +21,7 @@
   "menuColor": "default",
   "menuAccent": "subtle",
   "registries": {
-    "@fullcalendar-classic": "https://shadcn-registry.fullcalendar.io/classic/{name}.json"
+    "@fullcalendar-classic": "https://shadcn-registry.fullcalendar.io/classic/{name}.json",
+    "@fullcalendar-forma": "https://shadcn-registry.fullcalendar.io/forma/{name}.json"
   }
 }

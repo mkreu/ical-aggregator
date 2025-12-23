@@ -2,7 +2,6 @@ import { CalendarController } from '@fullcalendar/core'
 import { EventCalendarNextIcon, EventCalendarPrevIcon } from '@/components/event-calendar-icons'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { cn } from '@/lib/utils'
 
 export interface EventCalendarToolbarProps {
   controller: CalendarController
@@ -13,25 +12,18 @@ export interface EventCalendarToolbarProps {
     hint?: string
     click?: (ev: MouseEvent) => void
   }
-  borderlessX?: boolean
 }
 
 export function EventCalendarToolbar({
   controller,
   availableViews,
   addButton,
-  borderlessX,
 }: EventCalendarToolbarProps) {
   const buttons = controller.getButtonState()
 
   return (
-    <div
-      className={cn(
-        'flex items-center justify-between flex-wrap gap-3',
-        borderlessX && 'px-3',
-      )}
-    >
-      <div className='flex items-center shrink-0 gap-3'>
+    <div className='flex items-center justify-between flex-wrap gap-3 border-b p-3'>
+      <div className="flex items-center shrink-0 gap-3">
         {addButton && (
           <Button
             onClick={addButton.click as any}
@@ -41,15 +33,15 @@ export function EventCalendarToolbar({
         <Button
           onClick={() => controller.today()}
           aria-label={buttons.today.hint}
-          variant='outline'
+          variant="outline"
         >{buttons.today.text}</Button>
-        <div className='flex items-center'>
+        <div className="flex items-center">
           <Button
             onClick={() => controller.prev()}
             disabled={buttons.prev.isDisabled}
             aria-label={buttons.prev.hint}
-            variant='ghost'
-            size='icon'
+            variant="ghost"
+            size="icon"
           >
             <EventCalendarPrevIcon />
           </Button>
@@ -57,13 +49,13 @@ export function EventCalendarToolbar({
             onClick={() => controller.next()}
             disabled={buttons.next.isDisabled}
             aria-label={buttons.next.hint}
-            variant='ghost'
-            size='icon'
+            variant="ghost"
+            size="icon"
           >
             <EventCalendarNextIcon />
           </Button>
         </div>
-        <div className='text-xl'>{controller.view?.title}</div>
+        <div className="text-xl">{controller.view?.title}</div>
       </div>
       <Tabs value={controller.view?.type ?? availableViews[0]}>
         <TabsList>
