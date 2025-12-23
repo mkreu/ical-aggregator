@@ -1,4 +1,5 @@
 import { EventCalendar } from '@/components/event-calendar'
+import type { EventClickData, EventDisplayData, EventInput } from '@fullcalendar/core'
 import iCalendarPlugin from '@fullcalendar/icalendar'
 
 export function CalendarApp() {
@@ -21,7 +22,9 @@ export function CalendarApp() {
             nowIndicator
             navLinks
             timeZone='UTC'
-            events={{ url: "/api/calendar.ics", format: 'ics' }}
+            events={{ url: "/api/calendar.ics", format: 'ics', eventDataTransform: eventDataTransform }}
+            eventContent={renderEventContent}
+            eventClick={eventClick}
             addButton={{
                 text: 'Add Event',
                 click() {
@@ -29,5 +32,29 @@ export function CalendarApp() {
                 }
             }}
         />
+    )
+}
+function eventClick(data: EventClickData): void {
+    console.log('Event clicked: ', data.event.title);
+    console.log(data.event);
+    //data.jsEvent.preventDefault();
+}
+
+
+function eventDataTransform(input: EventInput): EventInput {
+    let props = input.extendedProps || {};
+    props.url = input.url;
+    input.extendedProps = props;
+    input.url = ""; // disable default navigation
+    return input;
+}
+
+
+function renderEventContent(eventInfo: EventDisplayData) {
+    return (
+        <>
+            <b>{eventInfo.timeText}</b>
+            <i>{eventInfo.event.title}</i>
+        </>
     )
 }
