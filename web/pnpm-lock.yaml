@@ -20,6 +20,9 @@ importers:
       '@fullcalendar/daygrid':
         specifier: 7.0.0-beta.5
         version: 7.0.0-beta.5(@fullcalendar/core@7.0.0-beta.5)
+      '@fullcalendar/icalendar':
+        specifier: 7.0.0-beta.5
+        version: 7.0.0-beta.5(@fullcalendar/core@7.0.0-beta.5)(ical.js@2.2.1)
       '@fullcalendar/interaction':
         specifier: 7.0.0-beta.5
         version: 7.0.0-beta.5(@fullcalendar/core@7.0.0-beta.5)
@@ -36,7 +39,7 @@ importers:
         specifier: 7.0.0-beta.5
         version: 7.0.0-beta.5(@fullcalendar/core@7.0.0-beta.5)
       '@tailwindcss/vite':
-        specifier: ^4.1.17
+        specifier: ^4.1.18
         version: 4.1.18(vite@7.3.0(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2))
       class-variance-authority:
         specifier: ^0.7.1
@@ -44,14 +47,17 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      ical.js:
+        specifier: ^2.2.1
+        version: 2.2.1
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.2.3)
       react:
-        specifier: ^19.2.0
+        specifier: ^19.2.3
         version: 19.2.3
       react-dom:
-        specifier: ^19.2.0
+        specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       shadcn:
         specifier: ^3.6.2
@@ -60,35 +66,35 @@ importers:
         specifier: ^3.4.0
         version: 3.4.0
       tailwindcss:
-        specifier: ^4.1.17
+        specifier: ^4.1.18
         version: 4.1.18
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
     devDependencies:
       '@eslint/js':
-        specifier: ^9.39.1
+        specifier: ^9.39.2
         version: 9.39.2
       '@types/node':
-        specifier: ^24.10.1
+        specifier: ^24.10.4
         version: 24.10.4
       '@types/react':
-        specifier: ^19.2.5
+        specifier: ^19.2.7
         version: 19.2.7
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.7)
       '@vitejs/plugin-react':
-        specifier: ^5.1.1
+        specifier: ^5.1.2
         version: 5.1.2(vite@7.3.0(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2))
       eslint:
-        specifier: ^9.39.1
+        specifier: ^9.39.2
         version: 9.39.2(jiti@2.6.1)
       eslint-plugin-react-hooks:
         specifier: ^7.0.1
         version: 7.0.1(eslint@9.39.2(jiti@2.6.1))
       eslint-plugin-react-refresh:
-        specifier: ^0.4.24
+        specifier: ^0.4.26
         version: 0.4.26(eslint@9.39.2(jiti@2.6.1))
       globals:
         specifier: ^16.5.0
@@ -97,10 +103,10 @@ importers:
         specifier: ~5.9.3
         version: 5.9.3
       typescript-eslint:
-        specifier: ^8.46.4
+        specifier: ^8.50.1
         version: 8.50.1(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
       vite:
-        specifier: ^7.2.4
+        specifier: ^7.3.0
         version: 7.3.0(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)
 
 packages:
@@ -507,6 +513,12 @@ packages:
     resolution: {integrity: sha512-0hsNA3Sc2LHbKu3yZ3G/Tmvzou08qp4xt3VAk1JF0wvKFH8/Iq/4G3ItyI77G1zdcbn6PKzXuZCWlVj5bE3YKw==}
     peerDependencies:
       '@fullcalendar/core': 7.0.0-beta.5
+
+  '@fullcalendar/icalendar@7.0.0-beta.5':
+    resolution: {integrity: sha512-fkKWTyfRdxLpgT2iHxnG8Z/KLFaHt7xZvL6aIeCR+JiS27HPQHBvxyHfJbw/5owB7K2rb6/mwEvVBA4Ruxab+A==}
+    peerDependencies:
+      '@fullcalendar/core': 7.0.0-beta.5
+      ical.js: ^2.0.0
 
   '@fullcalendar/interaction@7.0.0-beta.5':
     resolution: {integrity: sha512-7os3A8fEs3sEajK/vJTSuBM+m4ug2GZrUbEqh6oFHDPchlSdHBnVDZRg19Q8ytHyXJZtih5LZtmjqKPVItwrdA==}
@@ -1572,6 +1584,9 @@ packages:
   human-signals@8.0.1:
     resolution: {integrity: sha512-eKCa6bwnJhvxj14kZk5NCPc6Hb6BdsU9DZcOnmQKSnO1VKrfV0zCvtttPZUsBvjmNDn8rpcJfpwSYnHBjc95MQ==}
     engines: {node: '>=18.18.0'}
+
+  ical.js@2.2.1:
+    resolution: {integrity: sha512-yK/UlPbEs316igb/tjRgbFA8ZV75rCsBJp/hWOatpyaPNlgw0dGDmU+FoicOcwX4xXkeXOkYiOmCqNPFpNPkQg==}
 
   iconv-lite@0.7.1:
     resolution: {integrity: sha512-2Tth85cXwGFHfvRgZWszZSvdo+0Xsqmw8k8ZwxScfcBneNUraK+dxRxRm24nszx80Y0TVio8kKLt5sLE7ZCLlw==}
@@ -2924,6 +2939,11 @@ snapshots:
     dependencies:
       '@fullcalendar/core': 7.0.0-beta.5
 
+  '@fullcalendar/icalendar@7.0.0-beta.5(@fullcalendar/core@7.0.0-beta.5)(ical.js@2.2.1)':
+    dependencies:
+      '@fullcalendar/core': 7.0.0-beta.5
+      ical.js: 2.2.1
+
   '@fullcalendar/interaction@7.0.0-beta.5(@fullcalendar/core@7.0.0-beta.5)':
     dependencies:
       '@fullcalendar/core': 7.0.0-beta.5
@@ -3984,6 +4004,8 @@ snapshots:
   human-signals@2.1.0: {}
 
   human-signals@8.0.1: {}
+
+  ical.js@2.2.1: {}
 
   iconv-lite@0.7.1:
     dependencies:

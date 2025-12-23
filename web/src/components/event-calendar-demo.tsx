@@ -1,8 +1,10 @@
 import { EventCalendar } from '@/components/event-calendar'
+import iCalendarPlugin from '@fullcalendar/icalendar'
 
 export function EventCalendarDemo() {
   return (
     <EventCalendar
+      plugins={[iCalendarPlugin]}
       eventDisplay='block'
       className='max-w-300 my-10 mx-auto'
       editable
@@ -10,7 +12,7 @@ export function EventCalendarDemo() {
       nowIndicator
       navLinks
       timeZone='UTC'
-      events='https://fullcalendar.io/api/demo-feeds/events.json'
+      events={{ url: "/api/calendar.ics", format: 'ics' }}
       addButton={{
         text: 'Add Event',
         click() {
