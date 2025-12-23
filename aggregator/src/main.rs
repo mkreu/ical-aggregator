@@ -1,9 +1,6 @@
 use arc_swap::ArcSwap;
 use axum::{
-    http::StatusCode,
-    response::{Html, IntoResponse, Response},
-    routing::get,
-    Router,
+    Json, Router, http::StatusCode, response::{Html, IntoResponse, Response}, routing::get
 };
 use icalendar::{Calendar, CalendarComponent, Component};
 use serde::Deserialize;
@@ -72,7 +69,7 @@ fn default_refresh_interval() -> u64 {
 // Shared state for cached calendar
 #[derive(Clone)]
 struct AppState {
-    cached_calendar: Arc<ArcSwap<String>>,
+    cached_calendar: Arc<ArcSwap<Calendar>>,
 }
 
 #[tokio::main]
@@ -91,7 +88,7 @@ async fn main() {
     );
 
     // Create shared state for cached calendar
-    let cached_calendar = Arc::new(ArcSwap::from_pointee(String::new()));
+    let cached_calendar = Arc::new(ArcSwap::from_pointee(Calendar::new()));
     let state = AppState {
         cached_calendar: cached_calendar.clone(),
     };
@@ -111,7 +108,8 @@ async fn main() {
     // Build the router
     let app = Router::new()
         .route("/", get(serve_index))
-        .route("/calendar.ics", get(serve_cached_calendar))
+        .route("/calendar.ics", get(serve_ical_calendar))
+        .route("/calendar.json", get(serve_json_calendar))
         .with_state(state);
 
     // Start the server
@@ -128,7 +126,7 @@ async fn main() {
 async fn refresh_calendar_loop(
     feeds: Vec<CalendarFeed>,
     rules: Vec<Rule>,
-    cached_calendar: Arc<ArcSwap<String>>,
+    cached_calendar: Arc<ArcSwap<Calendar>>,
     refresh_interval_seconds: u64,
 ) {
     loop {
@@ -148,7 +146,7 @@ async fn refresh_calendar_loop(
     }
 }
 
-async fn serve_cached_calendar(
+async fn serve_ical_calendar(
     axum::extract::State(state): axum::extract::State<AppState>,
 ) -> Result<impl IntoResponse, AppError> {
     let calendar = state.cached_calendar.load();
@@ -164,6 +162,21 @@ async fn serve_cached_calendar(
     ))
 }
 
+async fn serve_json_calendar(
+    axum::extract::State(state): axum::extract::State<AppState>,
+) -> Result<impl IntoResponse, AppError> {
+    let calendar = state.cached_calendar.load();
+
+    if calendar.is_empty() {
+        return Err(AppError(Box::from("Calendar not yet loaded")));
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(calendar.to_json()),
+    ))
+}
+
 async fn serve_index() -> Html<String> {
     match fs::read_to_string("index.html") {
         Ok(content) => Html(content),
@@ -174,7 +187,7 @@ async fn serve_index() -> Html<String> {
 async fn fetch_and_merge_calendars(
     feeds: &[CalendarFeed],
     rules: &[Rule],
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<Calendar, Box<dyn std::error::Error>> {
     // Fetch all calendars concurrently
     let client = reqwest::Client::new();
     let mut fetch_tasks = Vec::new();
@@ -218,7 +231,7 @@ async fn fetch_and_merge_calendars(
     }
 
     // Return the merged calendar as iCal format
-    Ok(merged_calendar.to_string())
+    Ok(merged_calendar)
 }
 
 fn merge_calendar_events(
@@ -295,5 +308,46 @@ impl IntoResponse for AppError {
             format!("Internal server error: {}", self.0),
         )
             .into_response()
+    }
+}
+
+trait CalendarExt {
+    fn to_json(&self) -> serde_json::Value;
+}
+
+impl CalendarExt for Calendar {
+    fn to_json(&self) -> serde_json::Value {
+        let mut events = Vec::new();
+        for component in &self.components {
+            if let CalendarComponent::Event(event) = component {
+                let mut event_map = serde_json::Map::new();
+                if let Some(summary) = event.get_summary() {
+                    event_map.insert(
+                        "title".to_string(),
+                        serde_json::Value::String(summary.to_string()),
+                    );
+                }
+                if let Some(dtstart) = event.get_start() {
+                    event_map.insert(
+                        "start".to_string(),
+                        serde_json::Value::String(dtstart.to_property("0xDEADBEEF").value().to_string()),
+                    );
+                }
+                if let Some(dtend) = event.get_end() {
+                    event_map.insert(
+                        "end".to_string(),
+                        serde_json::Value::String(dtend.to_property("0xDEADBEEF").value().to_string()),
+                    );
+                }
+                for (_, property) in event.properties() {
+                    event_map.insert(
+                        property.key().to_string(),
+                        serde_json::Value::String(property.value().to_string()),
+                    );
+                }
+                events.push(serde_json::Value::Object(event_map));
+            }
+        }
+        events.into()
     }
 }

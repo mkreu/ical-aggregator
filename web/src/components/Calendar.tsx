@@ -22,7 +22,7 @@ export function CalendarApp() {
             nowIndicator
             navLinks
             timeZone='UTC'
-            events={{ url: "/api/calendar.ics", format: 'ics', eventDataTransform: eventDataTransform }}
+            events={{ url: "/api/calendar.json", format: 'json', eventDataTransform: eventDataTransform }}
             eventContent={renderEventContent}
             eventClick={eventClick}
             addButton={{
@@ -42,10 +42,8 @@ function eventClick(data: EventClickData): void {
 
 
 function eventDataTransform(input: EventInput): EventInput {
-    let props = input.extendedProps || {};
-    props.url = input.url;
-    input.extendedProps = props;
     input.url = ""; // disable default navigation
+    input.color = input['X-COLOR'] || ''
     return input;
 }
 

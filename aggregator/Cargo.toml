@@ -7,6 +7,7 @@ edition = "2021"
 axum = "0.7"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 toml = "0.8"
 reqwest = { version = "0.11", features = ["rustls-tls"] }
 icalendar = "0.16"
@@ -17,3 +18,4 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 futures = "0.3"
 chrono = "0.4"
 arc-swap = "1.7"
+
