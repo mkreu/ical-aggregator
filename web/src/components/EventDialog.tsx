@@ -54,15 +54,12 @@ export function EventDialog({ event, onOpenChange }: EventDialogProps) {
                                         <strong>Location:</strong> {event.extendedProps['LOCATION']}
                                     </div>
                                 )}
-
+                                {event.extendedProps['DESCRIPTION'] && (
+                                    <div dangerouslySetInnerHTML={{ __html: event.extendedProps['DESCRIPTION'] }} />
+                                )}
                             </div>
                         )}
                     </DialogDescription>
-                                                    {event.extendedProps['DESCRIPTION'] && (
-                                    <div>
-                                        {event.extendedProps['DESCRIPTION']}
-                                    </div>
-                                )}
                 </DialogHeader>
                 <DialogFooter showCloseButton />
             </DialogContent>
