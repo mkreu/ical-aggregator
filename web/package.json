@@ -12,6 +12,13 @@
   "dependencies": {
     "@base-ui/react": "^1.0.0",
     "@fontsource-variable/raleway": "^5.2.8",
+    "@fullcalendar/core": "7.0.0-beta.5",
+    "@fullcalendar/daygrid": "7.0.0-beta.5",
+    "@fullcalendar/interaction": "7.0.0-beta.5",
+    "@fullcalendar/list": "7.0.0-beta.5",
+    "@fullcalendar/multimonth": "7.0.0-beta.5",
+    "@fullcalendar/react": "7.0.0-beta.5",
+    "@fullcalendar/timegrid": "7.0.0-beta.5",
     "@tailwindcss/vite": "^4.1.17",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
