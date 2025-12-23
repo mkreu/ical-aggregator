@@ -7,7 +7,7 @@ use serde::Deserialize;
 use std::fs;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::info;
+use tracing::{debug, info};
 
 #[derive(Debug, Deserialize, Clone)]
 struct CalendarFeed {
@@ -303,7 +303,7 @@ fn merge_calendar_events(
                     }
                 }
                 if conditions_met {
-                    info!(
+                    debug!(
                         "Applying rule '{}' to event '{}'",
                         rule.name,
                         event.get_summary().unwrap_or("Unnamed Event")
