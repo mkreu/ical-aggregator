@@ -4,8 +4,65 @@
 # Server port (default: 3000)
 port = 3000
 
+# Refresh interval in seconds (default: 300 = 5 minutes)
+# How often to fetch and merge the calendar feeds
+refresh_interval_seconds = 300
+
+# Number of days in the past to include events (default: 30)
+days_past = 30
+
+# Number of days in the future to include events (default: 365)
+days_future = 365
+
 # List of iCal feed URLs to merge
-feeds = [
-    "https://example.org/events.ics",
-    "https://example.com/events.ics"
+# Each feed has an 'id' (used as the CATEGORIES property) and a 'url'
+[[feeds]]
+id = "calendar1"
+url = "https://example.org/events.ics"
+
+[[feeds]]
+id = "calendar2"
+url = "https://example.com/events.ics"
+
+# Rules allow you to modify events based on conditions
+# Each rule has:
+# - name: A descriptive name for the rule
+# - conditions: A list of conditions that must all be met
+# - actions: A list of actions to apply when conditions are met
+#
+# Available condition operators:
+# - Contains: Check if a field contains a specific value
+#
+# Available action operators:
+# - Set: Set a field to a specific value (replaces existing value)
+# - Prepend: Add text to the beginning of a field value
+
+# Example: Set color for events from a specific calendar source
+[[rules]]
+name = "Calendar 1 Color"
+conditions = [
+    { field = "X-CALENDAR-SOURCE", op = "Contains", value = "calendar1" },
+]
+actions = [
+    { field = "X-COLOR", op = "Set", value = "#3498db" },
+]
+
+# Example: Tag workshops by detecting keywords in summary
+[[rules]]
+name = "Workshop Tagging"
+conditions = [
+    { field = "SUMMARY", op = "Contains", value = "Workshop" },
+]
+actions = [
+    { field = "CATEGORIES", op = "Set", value = "Workshop" },
+]
+
+# Example: Prepend location indicator to event titles
+[[rules]]
+name = "Add Location Prefix"
+conditions = [
+    { field = "LOCATION", op = "Contains", value = "Berlin" },
+]
+actions = [
+    { field = "SUMMARY", op = "Prepend", value = "[Berlin] " },
 ]

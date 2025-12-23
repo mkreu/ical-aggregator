@@ -24,6 +24,10 @@ struct Config {
     port: u16,
     #[serde(default = "default_refresh_interval")]
     refresh_interval_seconds: u64,
+    #[serde(default = "default_days_past")]
+    days_past: i64,
+    #[serde(default = "default_days_future")]
+    days_future: i64,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -66,6 +70,14 @@ fn default_refresh_interval() -> u64 {
     300 // 5 minutes
 }
 
+fn default_days_past() -> i64 {
+    30 // 30 days in the past
+}
+
+fn default_days_future() -> i64 {
+    365 // 365 days in the future
+}
+
 // Shared state for cached calendar
 #[derive(Clone)]
 struct AppState {
@@ -95,12 +107,16 @@ async fn main() {
 
     // Spawn background task to refresh calendar periodically
     let refresh_interval = config.refresh_interval_seconds;
+    let days_past = config.days_past;
+    let days_future = config.days_future;
     tokio::spawn(async move {
         refresh_calendar_loop(
             config.feeds,
             config.rules,
             cached_calendar,
             refresh_interval,
+            days_past,
+            days_future,
         )
         .await;
     });
@@ -128,11 +144,13 @@ async fn refresh_calendar_loop(
     rules: Vec<Rule>,
     cached_calendar: Arc<ArcSwap<Calendar>>,
     refresh_interval_seconds: u64,
+    days_past: i64,
+    days_future: i64,
 ) {
     loop {
         info!("Refreshing calendar cache...");
 
-        match fetch_and_merge_calendars(&feeds, &rules).await {
+        match fetch_and_merge_calendars(&feeds, &rules, days_past, days_future).await {
             Ok(merged_ical) => {
                 cached_calendar.store(Arc::new(merged_ical));
                 info!("Calendar cache updated successfully");
@@ -187,6 +205,8 @@ async fn serve_index() -> Html<String> {
 async fn fetch_and_merge_calendars(
     feeds: &[CalendarFeed],
     rules: &[Rule],
+    days_past: i64,
+    days_future: i64,
 ) -> Result<Calendar, Box<dyn std::error::Error>> {
     // Fetch all calendars concurrently
     let client = reqwest::Client::new();
@@ -216,7 +236,7 @@ async fn fetch_and_merge_calendars(
         match result {
             Ok(Ok((ical_text, calendar_id))) => {
                 if let Err(e) =
-                    merge_calendar_events(&ical_text, &mut merged_calendar, rules, &calendar_id)
+                    merge_calendar_events(&ical_text, &mut merged_calendar, rules, &calendar_id, days_past, days_future)
                 {
                     tracing::warn!("Failed to parse calendar '{}': {}", calendar_id, e);
                 }
@@ -239,13 +259,35 @@ fn merge_calendar_events(
     merged: &mut Calendar,
     rules: &[Rule],
     calendar_id: &str,
+    days_past: i64,
+    days_future: i64,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    use chrono::{Utc, Duration};
+    
+    // Calculate date range
+    let now = Utc::now();
+    let start_date = now - Duration::days(days_past);
+    let end_date = now + Duration::days(days_future);
+    
     // Parse the iCal text using the parser
     let parsed: Calendar = ical_text.parse()?;
 
     // Extract events and add them to the merged calendar
     for component in parsed.components {
         if let CalendarComponent::Event(mut event) = component {
+            // Filter by date range
+            if let Some(dtstart_str) = event.property_value("DTSTART") {
+                // Try to parse the date - handle both DATE and DATE-TIME formats
+                let event_date = parse_ical_date(dtstart_str);
+                
+                // Skip events outside the date range
+                if let Some(event_dt) = event_date {
+                    if event_dt < start_date || event_dt > end_date {
+                        continue;
+                    }
+                }
+            }
+            
             event.add_property("X-CALENDAR-SOURCE", calendar_id);
             for rule in rules {
                 let mut conditions_met = true;
@@ -286,6 +328,29 @@ fn merge_calendar_events(
     }
 
     Ok(())
+}
+
+fn parse_ical_date(date_str: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    use chrono::{NaiveDate, NaiveDateTime, TimeZone};
+    
+    // Remove TZID parameter if present (e.g., "TZID=America/New_York:20231215T120000")
+    let clean_date = if let Some(colon_pos) = date_str.find(':') {
+        &date_str[colon_pos + 1..]
+    } else {
+        date_str
+    };
+    
+    // Try parsing as DATE-TIME (e.g., "20231215T120000Z" or "20231215T120000")
+    if let Ok(dt) = NaiveDateTime::parse_from_str(clean_date.trim_end_matches('Z'), "%Y%m%dT%H%M%S") {
+        return Some(chrono::Utc.from_utc_datetime(&dt));
+    }
+    
+    // Try parsing as DATE only (e.g., "20231215")
+    if let Ok(d) = NaiveDate::parse_from_str(clean_date, "%Y%m%d") {
+        return Some(chrono::Utc.from_utc_datetime(&d.and_hms_opt(0, 0, 0)?));
+    }
+    
+    None
 }
 
 // Error handling
